@@ -1,0 +1,9 @@
+README
+Makefile
+Makefile.old
+MYMETA.*
+blib/
+pm_to_blib
+MANIFEST.bak
+Radio-HackRF-*.tar.gz
+.inline/
