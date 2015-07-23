@@ -2,11 +2,14 @@ package Radio::HackRF;
 
 our $VERSION = '0.100';
 
+require XSLoader;
+XSLoader::load('Radio::HackRF', $VERSION);
+
 use common::sense;
 use AnyEvent;
 use AnyEvent::Util;
 
-use Inline::Module::LeanDist C => 'DATA', libs => '-lhackrf';
+##use Inline::Module::LeanDist C => 'DATA', libs => '-lhackrf', typemaps => 'typemap', boot => 'PERL_MATH_INT64_LOAD_OR_CROAK;', object => '$(O_FILES)';
 
 
 sub new {
@@ -44,9 +47,7 @@ sub tx {
   $self->{state} = 'TX';
 
   $self->{pipe_watcher} = AE::io $self->{perl_side_signalling_fh}, 0, sub {
-print "BING\n";
     sysread $self->{perl_side_signalling_fh}, my $junk, 1; ## FIXME: non-blocking
-print "BING 2\n";
 
     my $bytes_needed = _get_bytes_needed($self->{ctx});
 
@@ -54,7 +55,6 @@ print "BING 2\n";
     print "OMFG: $bytes_needed\n";
 
     syswrite $self->{perl_side_signalling_fh}, "\x00";
-print "BONG\n";
   };
 
   _start_tx($self->{ctx});
@@ -73,131 +73,6 @@ sub run {
 
 
 1;
-
-
-
-__DATA__
-__C__
-
-#include <libhackrf/hackrf.h>
-
-
-struct hackrf_context {
-  hackrf_device* device;
-
-  int signalling_fd;
-  uint64_t bytes_needed;
-  void *buffer;
-};
-
-
-static int number_of_hackrf_inits = 0;
-
-void *new_context() {
-  int result;
-  struct hackrf_context *ctx;
-
-  ctx = malloc(sizeof(struct hackrf_context));
-
-  result = hackrf_init();
-
-  if (result != HACKRF_SUCCESS) {
-    free(ctx);
-    croak("hackrf_init() failed: %s (%d)\n", hackrf_error_name(result), result);
-  }
-
-  number_of_hackrf_inits++;
-
-  result = hackrf_open(&ctx->device);
-
-  if (result != HACKRF_SUCCESS) {
-    free(ctx);
-    croak("hackrf_open() failed: %s (%d)\n", hackrf_error_name(result), result);
-  }
-
-  return (void *) ctx;
-}
-
-
-
-void _set_signalling_fd(void *ctx_void, int fd) {
-  struct hackrf_context *ctx = (struct hackrf_context *)ctx_void;
-
-  ctx->signalling_fd = fd;
-}
-
-unsigned long _get_bytes_needed(void *ctx_void) {
-  struct hackrf_context *ctx = (struct hackrf_context *)ctx_void;
-
-  return ctx->bytes_needed;
-}
-
-
-
-
-
-
-void _tx_callback(hackrf_transfer* transfer) {
-  char junk = '\x00';
-  struct hackrf_context *ctx = (struct hackrf_context *)transfer->tx_ctx;
-
-  ctx->bytes_needed = transfer->valid_length;
-  ctx->buffer = transfer->buffer;
-
-printf("OMG IN TX CALLBACK!\n");
-  (void)write(ctx->signalling_fd, &junk, 1);
-  (void)read(ctx->signalling_fd, &junk, 1);
-}
-
-void _start_tx(void *ctx_void) {
-  struct hackrf_context *ctx = (struct hackrf_context *)ctx_void;
-  int result;
-
-  result = hackrf_set_txvga_gain(ctx->device, 30);
-  result |= hackrf_start_tx(ctx->device, _tx_callback, ctx);
-
-  if (result != HACKRF_SUCCESS) {
-    croak("hackrf_start_tx() failed: %s (%d)\n", hackrf_error_name(result), result);
-  }
-}
-
-
-
-
-
-void _set_amp_enable(void *ctx_void, int enabled) {
-  int result;
-  struct hackrf_context *ctx = (struct hackrf_context *)ctx_void;
-
-  result = hackrf_set_amp_enable(ctx->device, enabled ? 1 : 0);
-
-  if (result != HACKRF_SUCCESS) {
-    croak("hackrf_set_amp_enable() failed: %s (%d)\n", hackrf_error_name(result), result);
-  }
-}
-
-
-void _set_freq(void *ctx_void, unsigned long freq) { // FIXME: 32 bit systems
-  int result;
-  struct hackrf_context *ctx = (struct hackrf_context *)ctx_void;
-
-  result = hackrf_set_freq(ctx->device, freq);
-
-  if (result != HACKRF_SUCCESS) {
-    croak("hackrf_set_freq() failed: %s (%d)\n", hackrf_error_name(result), result);
-  }
-}
-
-void _set_sample_rate(void *ctx_void, unsigned long sample_rate) {
-  int result;
-  struct hackrf_context *ctx = (struct hackrf_context *)ctx_void;
-
-  result = hackrf_set_sample_rate_manual(ctx->device, sample_rate, 1);
-
-  if (result != HACKRF_SUCCESS) {
-    croak("hackrf_set_sample_rate_manual() failed: %s (%d)\n", hackrf_error_name(result), result);
-  }
-}
 
 
 
