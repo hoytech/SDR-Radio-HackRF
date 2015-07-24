@@ -109,7 +109,21 @@ _get_bytes_needed(ctx)
 
 
 
+void
+_copy_bytes(ctx, bytes_sv)
+        struct hackrf_context *ctx
+        SV *bytes_sv
+    CODE:
+        char *bytes;
+        size_t bytes_size;
 
+        if (!SvPOK(bytes_sv)) croak("bytes is not a string");
+        bytes_size = SvCUR(bytes_sv);
+        bytes = SvPV(bytes_sv, bytes_size);
+
+        if (bytes_size != ctx->bytes_needed) croak("bytes is the wrong size %lu vs %lu", bytes_size, ctx->bytes_needed);
+
+        memcpy(ctx->buffer, bytes, bytes_size);
 
 
 void

@@ -51,8 +51,9 @@ sub tx {
 
     my $bytes_needed = _get_bytes_needed($self->{ctx});
 
-    $cb->($bytes_needed);
-    print "OMFG: $bytes_needed\n";
+    my $bytes = $cb->($bytes_needed);
+
+    _copy_bytes($self->{ctx}, $$bytes);
 
     syswrite $self->{perl_side_signalling_fh}, "\x00";
   };
@@ -87,20 +88,19 @@ Radio::HackRF - Control HackRF software defined radio
 =head1 SYNOPSIS
 
     my $h = Radio::HackRF->new(
-              frequency => 35_000_000,
+              freq => 35_000_000,
               sample_rate => 8_000_000,
-              tx_if_gain => 20,
-              cb => sub {
-                my $seq = sequence($duration * $sample_rate);
-
-                my $iq_data = $amp_scale * cos(2 * pi * ($freq/$sample_rate) * $seq)
-                              + ($amp_scale * i * sin(2 * pi * ($freq/$sample_rate) * $seq));
-
-                my $scaled = $iq_data + $dc_offset + ($dc_offset * i);
-
-                return $scaled->byte;
-              },
             );
+
+    $h->tx(sub {
+        my $block_size = shift;
+
+        my $output = "\x00" x $block_size;
+
+        return \$output;
+    });
+
+    $h->run;
 
 =head1 DESCRIPTION
 

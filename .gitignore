@@ -6,4 +6,6 @@ blib/
 pm_to_blib
 MANIFEST.bak
 Radio-HackRF-*.tar.gz
-.inline/
+HackRF.c
+HackRF.o
+perl_math_int64.o
