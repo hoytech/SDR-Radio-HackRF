@@ -53,12 +53,37 @@ sub tx {
 
     my $bytes = $cb->($bytes_needed);
 
+    if (!defined $bytes) {
+      $self->stop;
+      return;
+    }
+
     _copy_bytes($self->{ctx}, $$bytes);
 
     syswrite $self->{perl_side_signalling_fh}, "\x00";
   };
 
   _start_tx($self->{ctx});
+}
+
+
+sub stop {
+  my ($self) = @_;
+
+  _stop_callback($self->{ctx});
+
+  syswrite $self->{perl_side_signalling_fh}, "\x00";
+
+  $self->{pipe_watcher} = AE::io $self->{perl_side_signalling_fh}, 0, sub {
+    sysread $self->{perl_side_signalling_fh}, my $junk, 1; ## FIXME: non-blocking
+
+    delete $self->{pipe_watcher};
+
+    if ($self->{state} eq 'TX') {
+      _stop_tx($self->{ctx});
+      delete $self->{state};
+    }
+  };
 }
 
 

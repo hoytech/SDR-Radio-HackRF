@@ -25,13 +25,20 @@ struct hackrf_context {
 
 static int number_of_hackrf_inits = 0;
 
-
+static volatile sig_atomic_t terminate_callback = 0;
 
 
 static int _tx_callback(hackrf_transfer* transfer) {
   char junk = '\x00';
   struct hackrf_context *ctx = (struct hackrf_context *)transfer->tx_ctx;
   ssize_t result;
+
+  if (terminate_callback) {
+    terminate_callback = 1;
+    result = write(ctx->signalling_fd, &junk, 1);
+    if (result != 1) abort();
+    return -1;
+  }
 
   ctx->bytes_needed = transfer->valid_length;
   ctx->buffer = transfer->buffer;
@@ -137,6 +144,32 @@ _start_tx(ctx)
 
         if (result != HACKRF_SUCCESS) {
           croak("hackrf_start_tx() failed: %s (%d)\n", hackrf_error_name(result), result);
+        }
+
+
+void _stop_callback(ctx)
+        struct hackrf_context *ctx
+    CODE:
+        terminate_callback = 1;
+
+
+void _stop_tx(ctx)
+        struct hackrf_context *ctx
+    CODE:
+        int result;
+
+        result = hackrf_stop_tx(ctx->device);
+
+        if (result != HACKRF_SUCCESS) {
+          croak("hackrf_stop_tx() failed: %s (%d)\n", hackrf_error_name(result), result);
+        }
+
+        // disable AMP as safety precaution
+
+        result = hackrf_set_amp_enable(ctx->device, 0);
+
+        if (result != HACKRF_SUCCESS) {
+          croak("hackrf_set_amp_enable() failed: %s (%d)\n", hackrf_error_name(result), result);
         }
 
 
