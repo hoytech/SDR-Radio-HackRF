@@ -2,12 +2,10 @@ use common::sense;
 
 use PDL;
 use PDL::Complex;
-
-
-sub pi () { 3.14159265358979 }
-
+use PDL::Constants qw(PI);
 
 use Radio::HackRF;
+
 
 
 my $sample_rate = 8_000_000;
@@ -15,7 +13,6 @@ my $freq = 470_000;
 my $amp_scale = 50;
 my $pulse_width = 0.0005;
 my $dc_offset = 5;
-
 
 
 
@@ -35,19 +32,25 @@ my $command_to_pulses_map = {
 sub generate_base_sequence {
   my $pulses = shift;
 
-  my $message = ('1110' x 4) . ('10' x $pulses);
+  my @message = (
+                  qw(1 1 1 0) x 4,
+                  qw(1 0) x $pulses,
+                );
 
-  my $signal = rld(ones(length($message)) * $pulse_width * $sample_rate,
-                   pdl(split //, $message));
-
-
-  my $carrier = sequence($signal->getdim(0));
-
-  $carrier = $amp_scale * cos(2 * pi * ($freq/$sample_rate) * $carrier)
-             + ($amp_scale * i * sin(2 * pi * ($freq/$sample_rate) * $carrier));
+  my $signal = rld(ones(scalar @message) * $pulse_width * $sample_rate,
+                   pdl(@message));
 
 
-  my $product = ($signal * $carrier) + $dc_offset + ($dc_offset * i);
+  my $sample_sequence = sequence($signal->getdim(0)) * 2 * PI * ($freq/$sample_rate);
+
+  my $carrier = cos($sample_sequence) + (i * sin($sample_sequence));
+
+  $carrier *= $amp_scale;
+
+
+  my $product = $signal * $carrier;
+
+  $product += $dc_offset + ($dc_offset * i);
 
 
   return $product->byte->flat;
