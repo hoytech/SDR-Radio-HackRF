@@ -8,4 +8,5 @@ MANIFEST.bak
 Radio-HackRF-*.tar.gz
 HackRF.c
 HackRF.o
+HackRF.bs
 perl_math_int64.o

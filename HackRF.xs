@@ -139,7 +139,7 @@ _start_tx(ctx)
     CODE:
         int result;
 
-        result = hackrf_set_txvga_gain(ctx->device, 30);
+        result = hackrf_set_txvga_gain(ctx->device, 40);
         result |= hackrf_start_tx(ctx->device, _tx_callback, ctx);
 
         if (result != HACKRF_SUCCESS) {
