@@ -18,8 +18,8 @@ struct hackrf_context {
   hackrf_device* device;
 
   int signalling_fd;
-  uint64_t bytes_needed;
   void *buffer;
+  uint64_t buffer_size;
 };
 
 
@@ -28,9 +28,8 @@ static int number_of_hackrf_inits = 0;
 static volatile sig_atomic_t terminate_callback = 0;
 
 
-static int _tx_callback(hackrf_transfer* transfer) {
+static int _transfer_callback(hackrf_transfer* transfer, struct hackrf_context *ctx) {
   char junk = '\x00';
-  struct hackrf_context *ctx = (struct hackrf_context *)transfer->tx_ctx;
   ssize_t result;
 
   if (terminate_callback) {
@@ -40,7 +39,7 @@ static int _tx_callback(hackrf_transfer* transfer) {
     return -1;
   }
 
-  ctx->bytes_needed = transfer->valid_length;
+  ctx->buffer_size = transfer->valid_length;
   ctx->buffer = transfer->buffer;
 
   result = write(ctx->signalling_fd, &junk, 1);
@@ -50,6 +49,19 @@ static int _tx_callback(hackrf_transfer* transfer) {
 
   return 0;
 }
+
+static int _tx_callback(hackrf_transfer* transfer) {
+  struct hackrf_context *ctx = (struct hackrf_context *)transfer->tx_ctx;
+
+  return _transfer_callback(transfer, ctx);
+}
+
+static int _rx_callback(hackrf_transfer* transfer) {
+  struct hackrf_context *ctx = (struct hackrf_context *)transfer->rx_ctx;
+
+  return _transfer_callback(transfer, ctx);
+}
+
 
 
 
@@ -105,10 +117,10 @@ _set_signalling_fd(ctx, fd)
 
 
 uint64_t
-_get_bytes_needed(ctx)
+_get_buffer_size(ctx)
         struct hackrf_context *ctx
     CODE:
-        RETVAL = ctx->bytes_needed;
+        RETVAL = ctx->buffer_size;
 
     OUTPUT:
         RETVAL
@@ -117,7 +129,7 @@ _get_bytes_needed(ctx)
 
 
 void
-_copy_bytes(ctx, bytes_sv)
+_copy_to_buffer(ctx, bytes_sv)
         struct hackrf_context *ctx
         SV *bytes_sv
     CODE:
@@ -128,9 +140,30 @@ _copy_bytes(ctx, bytes_sv)
         bytes_size = SvCUR(bytes_sv);
         bytes = SvPV(bytes_sv, bytes_size);
 
-        if (bytes_size != ctx->bytes_needed) croak("bytes is the wrong size %lu vs %lu", bytes_size, ctx->bytes_needed);
+        if (bytes_size != ctx->buffer_size) croak("source string is the wrong size %lu vs %lu", bytes_size, ctx->buffer_size);
 
         memcpy(ctx->buffer, bytes, bytes_size);
+
+
+
+SV *
+_copy_from_buffer(ctx)
+        struct hackrf_context *ctx
+    CODE:
+        SV *output;
+        char *outputp;
+
+        output = newSVpvn("", 0);
+        SvGROW(output, ctx->buffer_size);
+        SvCUR_set(output, ctx->buffer_size);
+        outputp = SvPV(output, ctx->buffer_size);
+
+        memcpy(outputp, ctx->buffer, ctx->buffer_size);
+
+        RETVAL = output;
+
+    OUTPUT:
+        RETVAL
 
 
 void
@@ -144,6 +177,21 @@ _start_tx(ctx)
 
         if (result != HACKRF_SUCCESS) {
           croak("hackrf_start_tx() failed: %s (%d)\n", hackrf_error_name(result), result);
+        }
+
+
+void
+_start_rx(ctx)
+        struct hackrf_context *ctx
+    CODE:
+        int result;
+
+        result = hackrf_set_vga_gain(ctx->device, 32);
+        result |= hackrf_set_lna_gain(ctx->device, 32);
+        result |= hackrf_start_rx(ctx->device, _rx_callback, ctx);
+
+        if (result != HACKRF_SUCCESS) {
+          croak("hackrf_start_rx() failed: %s (%d)\n", hackrf_error_name(result), result);
         }
 
 
@@ -162,6 +210,26 @@ void _stop_tx(ctx)
 
         if (result != HACKRF_SUCCESS) {
           croak("hackrf_stop_tx() failed: %s (%d)\n", hackrf_error_name(result), result);
+        }
+
+        // disable amp as safety precaution
+
+        result = hackrf_set_amp_enable(ctx->device, 0);
+
+        if (result != HACKRF_SUCCESS) {
+          croak("hackrf_set_amp_enable() failed: %s (%d)\n", hackrf_error_name(result), result);
+        }
+
+
+void _stop_rx(ctx)
+        struct hackrf_context *ctx
+    CODE:
+        int result;
+
+        result = hackrf_stop_rx(ctx->device);
+
+        if (result != HACKRF_SUCCESS) {
+          croak("hackrf_stop_rx() failed: %s (%d)\n", hackrf_error_name(result), result);
         }
 
         // disable amp as safety precaution

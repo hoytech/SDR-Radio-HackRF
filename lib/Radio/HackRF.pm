@@ -55,21 +55,40 @@ sub tx {
   $self->{pipe_watcher} = AE::io $self->{perl_side_signalling_fh}, 0, sub {
     sysread $self->{perl_side_signalling_fh}, my $junk, 1; ## FIXME: non-blocking
 
-    my $bytes_needed = _get_bytes_needed($self->{ctx});
+    my $buffer_size = _get_buffer_size($self->{ctx});
 
-    my $bytes = $cb->($bytes_needed);
+    my $bytes = $cb->($buffer_size);
 
     if (!defined $bytes) {
       $self->stop;
       return;
     }
 
-    _copy_bytes($self->{ctx}, $$bytes);
+    _copy_to_buffer($self->{ctx}, $$bytes);
 
     syswrite $self->{perl_side_signalling_fh}, "\x00";
   };
 
   _start_tx($self->{ctx});
+}
+
+sub rx {
+  my ($self, $cb) = @_;
+
+  die "already in $self->{state} state" if $self->{state} ne 'IDLE';
+  $self->{state} = 'RX';
+
+  $self->{pipe_watcher} = AE::io $self->{perl_side_signalling_fh}, 0, sub {
+    sysread $self->{perl_side_signalling_fh}, my $junk, 1; ## FIXME: non-blocking
+
+    my $buffer = _copy_from_buffer($self->{ctx});
+
+    $cb->($buffer);
+
+    syswrite $self->{perl_side_signalling_fh}, "\x00";
+  };
+
+  _start_rx($self->{ctx});
 }
 
 
@@ -79,6 +98,11 @@ sub stop {
   if ($self->{state} eq 'TX') {
     $self->_stop_callback();
     _stop_tx($self->{ctx});
+  } elsif ($self->{state} eq 'RX') {
+    $self->_stop_callback();
+    _stop_rx($self->{ctx});
+  } else {
+    warn "called stop but in state '$self->{state}'";
   }
 }
 
