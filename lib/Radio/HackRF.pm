@@ -9,8 +9,6 @@ use common::sense;
 use AnyEvent;
 use AnyEvent::Util;
 
-##use Inline::Module::LeanDist C => 'DATA', libs => '-lhackrf', typemaps => 'typemap', boot => 'PERL_MATH_INT64_LOAD_OR_CROAK;', object => '$(O_FILES)';
-
 
 sub new {
   my ($class, %args) = @_;
@@ -19,6 +17,7 @@ sub new {
   bless $self, $class;
 
   $self->{ctx} = new_context();
+  $self->{state} = 'IDLE';
 
   ($self->{perl_side_signalling_fh}, $self->{c_side_signalling_fh}) = AnyEvent::Util::portable_socketpair();
 
@@ -28,6 +27,13 @@ sub new {
 
   ## always turn off unless actually requested
   _set_amp_enable($self->{ctx}, $args{amp_enable} ? 1 : 0);
+
+  if (!$args{dont_handle_sigint}) {
+    $SIG{INT} = sub {
+      $self->stop;
+      exit;
+    };
+  }
 
   if (exists $args{freq}) {
     _set_freq($self->{ctx}, $args{freq});
@@ -43,7 +49,7 @@ sub new {
 sub tx {
   my ($self, $cb) = @_;
 
-  die "already in $self->{state} state" if $self->{state};
+  die "already in $self->{state} state" if $self->{state} ne 'IDLE';
   $self->{state} = 'TX';
 
   $self->{pipe_watcher} = AE::io $self->{perl_side_signalling_fh}, 0, sub {
@@ -70,7 +76,19 @@ sub tx {
 sub stop {
   my ($self) = @_;
 
-  _stop_callback($self->{ctx});
+  if ($self->{state} eq 'TX') {
+    $self->_stop_callback();
+    _stop_tx($self->{ctx});
+  }
+}
+
+
+sub _stop_callback {
+  my ($self) = @_;
+
+  _set_terminate_callback_flag($self->{ctx});
+
+  $self->{state} = 'TERM';
 
   syswrite $self->{perl_side_signalling_fh}, "\x00";
 
@@ -78,11 +96,7 @@ sub stop {
     sysread $self->{perl_side_signalling_fh}, my $junk, 1; ## FIXME: non-blocking
 
     delete $self->{pipe_watcher};
-
-    if ($self->{state} eq 'TX') {
-      _stop_tx($self->{ctx});
-      delete $self->{state};
-    }
+    delete $self->{state};
   };
 }
 

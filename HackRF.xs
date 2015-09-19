@@ -34,7 +34,7 @@ static int _tx_callback(hackrf_transfer* transfer) {
   ssize_t result;
 
   if (terminate_callback) {
-    terminate_callback = 1;
+    terminate_callback = 0;
     result = write(ctx->signalling_fd, &junk, 1);
     if (result != 1) abort();
     return -1;
@@ -147,7 +147,7 @@ _start_tx(ctx)
         }
 
 
-void _stop_callback(ctx)
+void _set_terminate_callback_flag(ctx)
         struct hackrf_context *ctx
     CODE:
         terminate_callback = 1;
@@ -164,7 +164,7 @@ void _stop_tx(ctx)
           croak("hackrf_stop_tx() failed: %s (%d)\n", hackrf_error_name(result), result);
         }
 
-        // disable AMP as safety precaution
+        // disable amp as safety precaution
 
         result = hackrf_set_amp_enable(ctx->device, 0);
 
