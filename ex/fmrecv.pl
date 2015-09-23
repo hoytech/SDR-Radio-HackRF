@@ -61,7 +61,7 @@ $h->rx(sub {
 
   my $a = $aI + (i * $aQ);
   my $b = $bI + (i * $bQ);
-  my $angle = $a * $b->Cconj();
+  my $angle = $a->Cconj() * $b;
   $angle = $angle->Carg();
 
   $angle = $angle->append(pdl(0)); ## FIXME: retain previous values
