@@ -25,8 +25,8 @@ sub new {
 
   _set_signalling_fd($self->{ctx}, fileno($self->{c_side_signalling_fh}));
 
-  ## always turn off unless actually requested
-  _set_amp_enable($self->{ctx}, $args{amp_enable} ? 1 : 0);
+  ## always turn amp off -- keep off as much as possible so it doesn't accidentally fry
+  _set_amp_enable($self->{ctx}, 0);
 
   if (!$args{dont_handle_sigint}) {
     $SIG{INT} = sub {
@@ -35,16 +35,9 @@ sub new {
     };
   }
 
-  if (exists $args{freq}) {
-    _set_freq($self->{ctx}, $args{freq});
-  }
-
-  if (exists $args{sample_rate}) {
-    _set_sample_rate($self->{ctx}, $args{sample_rate});
-  }
-
   return $self;
 }
+
 
 sub tx {
   my ($self, $cb) = @_;
@@ -90,6 +83,35 @@ sub rx {
 
   _start_rx($self->{ctx});
 }
+
+
+
+sub frequency {
+  my ($self, $freq) = @_;
+
+  die "getter not implemented yet" if !defined $freq;
+
+  _set_freq($self->{ctx}, $freq);
+}
+
+sub sample_rate {
+  my ($self, $sample_rate) = @_;
+
+  die "getter not implemented yet" if !defined $sample_rate;
+
+  _set_sample_rate($self->{ctx}, $sample_rate);
+}
+
+sub amp_enable {
+  my ($self, $amp_enable) = @_;
+
+  die "getter not implemented yet" if !defined $amp_enable;
+
+  $amp_enable = $amp_enable ? 1 : 0;
+
+  _set_amp_enable($self->{ctx}, $amp_enable);
+}
+
 
 
 sub stop {
