@@ -1,1 +1,1 @@
-lib/Radio/HackRF.pm
+lib/SDR/Radio/HackRF.pm

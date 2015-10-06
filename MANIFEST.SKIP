@@ -8,4 +8,4 @@ README.pod
 blib/
 pm_to_blib
 MYMETA.*
-Radio-HackRF.*tar[.]gz$
+SDR-Radio-HackRF.*tar[.]gz$

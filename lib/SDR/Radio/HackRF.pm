@@ -1,9 +1,9 @@
-package Radio::HackRF;
+package SDR::Radio::HackRF;
 
 our $VERSION = '0.100';
 
 require XSLoader;
-XSLoader::load('Radio::HackRF', $VERSION);
+XSLoader::load('SDR::Radio::HackRF', $VERSION);
 
 use common::sense;
 use AnyEvent;
@@ -146,14 +146,14 @@ __END__
 
 =head1 NAME
 
-Radio::HackRF - Control HackRF software defined radio
+SDR::Radio::HackRF - Control HackRF software defined radio
 
 =head1 SYNOPSIS
 
-    my $h = Radio::HackRF->new(
-              freq => 35_000_000,
-              sample_rate => 8_000_000,
-            );
+    my $h = SDR::Radio::HackRF->new;
+
+    $h->frequency(35_000_000);
+    $h->sample_rate(8_000_000);
 
     $h->tx(sub {
         my $block_size = shift;
@@ -169,7 +169,7 @@ Radio::HackRF - Control HackRF software defined radio
 
 =head1 SEE ALSO
 
-L<Radio-HackRF github repo|https://github.com/hoytech/Radio-HackRF>
+L<SDR-Radio-HackRF github repo|https://github.com/hoytech/SDR-Radio-HackRF>
 
 =head1 AUTHOR
 

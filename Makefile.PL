@@ -3,8 +3,8 @@ use strict;
 use ExtUtils::MakeMaker;
 
 my %args = (
-    NAME => 'Radio::HackRF',
-    VERSION_FROM => 'lib/Radio/HackRF.pm',
+    NAME => 'SDR::Radio::HackRF',
+    VERSION_FROM => 'lib/SDR/Radio/HackRF.pm',
     PREREQ_PM => {
       'common::sense' => 0,
       'AnyEvent' => 0,
@@ -19,8 +19,8 @@ my %args = (
     },
     META_MERGE => {
       resources => {
-        repository => 'git://github.com/hoytech/Radio-HackRF.git',
-        bugtracker => 'https://github.com/hoytech/Radio-HackRF/issues',
+        repository => 'git://github.com/hoytech/SDR-Radio-HackRF.git',
+        bugtracker => 'https://github.com/hoytech/SDR-Radio-HackRF/issues',
       },
     },
 );

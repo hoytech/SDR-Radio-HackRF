@@ -66,7 +66,7 @@ static int _rx_callback(hackrf_transfer* transfer) {
 
 
 
-MODULE = Radio::HackRF         PACKAGE = Radio::HackRF
+MODULE = SDR::Radio::HackRF         PACKAGE = SDR::Radio::HackRF
 PROTOTYPES: ENABLE
 
 
