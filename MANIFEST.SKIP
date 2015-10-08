@@ -9,3 +9,7 @@ blib/
 pm_to_blib
 MYMETA.*
 SDR-Radio-HackRF.*tar[.]gz$
+HackRF.c
+HackRF.o
+HackRF.xs
+perl_math_int64.o

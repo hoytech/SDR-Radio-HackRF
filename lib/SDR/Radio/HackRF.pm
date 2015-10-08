@@ -172,12 +172,14 @@ SDR::Radio::HackRF - Control HackRF software defined radio
 
 =head1 SYNOPSIS
 
-    my $h = SDR::Radio::HackRF->new;
+TX:
 
-    $h->frequency(35_000_000);
-    $h->sample_rate(8_000_000);
+    my $radio = SDR::Radio::HackRF->new;
 
-    $h->tx(sub {
+    $radio->frequency(35_000_000);
+    $radio->sample_rate(8_000_000);
+
+    $radio->tx(sub {
         my $block_size = shift;
 
         my $output = "\x00" x $block_size;
@@ -185,13 +187,38 @@ SDR::Radio::HackRF - Control HackRF software defined radio
         return \$output;
     });
 
-    $h->run;
+    $radio->run;
+
+RX:
+
+    my $radio = SDR::Radio::HackRF->new;
+
+    $radio->frequency(35_000_000);
+    $radio->sample_rate(8_000_000);
+
+    $radio->rx(sub {
+        ## Process data in $_[0]
+    });
+
+    $radio->run;
 
 =head1 DESCRIPTION
+
+This is the L<SDR> driver for L<HackRF|http://greatscottgadgets.com/hackrf/> devices.
+
+Although you can use it by itself, see the L<SDR> docs for more generic usage.
+
+In order to install this module you will need C<libhackrf> installed. On Ubuntu/Debian you can run:
+
+    sudo apt-get install libhackrf-dev
+
+NOTE: This module creates background threads so you should not fork after creating C<SDR::Radio::HackRF> objects.
 
 =head1 SEE ALSO
 
 L<SDR-Radio-HackRF github repo|https://github.com/hoytech/SDR-Radio-HackRF>
+
+L<SDR> - The main module, includes examples
 
 =head1 AUTHOR
 
